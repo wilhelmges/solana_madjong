@@ -99,16 +99,17 @@ fn main() {
     fs::create_dir_all(output_dir).expect("Failed to create levels directory");
 
     let layout_files = [
-        "default.layout",
+        // Ordered from easiest to hardest based on initial side-blocking:
         "dragon.layout",
-        "arrow.layout",
-        "arena.layout",
-        "bug.layout",
-        "cat.layout",
-        "enterprise.layout",
-        "maya.layout",
-        "order.layout",
         "pirates.layout",
+        "bug.layout",
+        "enterprise.layout",
+        "order.layout",
+        "arena.layout",
+        "arrow.layout",
+        "maya.layout",
+        "cat.layout",
+        "default.layout",
     ];
 
     for (i, filename) in layout_files.iter().enumerate() {
