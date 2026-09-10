@@ -11,6 +11,16 @@ use input::Action;
 use renderer::Renderer;
 use theme::Theme;
 
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Solana Mahjong".to_owned(),
+        window_width: 1280,
+        window_height: 720,
+        high_dpi: true,
+        ..Default::default()
+    }
+}
+
 enum Screen {
     Start,
     Game,
@@ -102,7 +112,7 @@ impl App {
     }
 }
 
-#[macroquad::main("Mahjong")]
+#[macroquad::main(window_conf)]
 async fn main() {
     let mut app = App::new().await;
 

@@ -1,4 +1,5 @@
 pub mod draw;
+pub mod icons;
 
 use crate::game_core::GameState;
 
@@ -50,52 +51,52 @@ impl Renderer {
             max_z = max_z.max(tile.position.z);
         }
 
-        let grid_w = (max_x - min_x + 2) as f32;
-        let grid_h = (max_y - min_y + 2) as f32;
+        // Consecutive tiles are 2 quarter-tile units apart (KMahjongg grid).
+        let n_cols = ((max_x - min_x) / 2 + 1).max(1) as f32;
+        let n_rows = ((max_y - min_y) / 2 + 1).max(1) as f32;
+        let max_z = max_z as f32;
 
-        let margin = 60.0f32;
-        let button_area = 50.0f32;
-        let avail_w = screen_w - margin * 2.0;
-        let avail_h = screen_h - margin * 2.0 - button_area;
+        let margin = 26.0f32;
+        let bottom = 44.0f32;
+        let avail_w = (screen_w - margin * 2.0).max(100.0);
+        let avail_h = (screen_h - margin * 2.0 - bottom).max(100.0);
 
-        let tile_base_w = 40.0f32;
-        let tile_base_h = 30.0f32;
-        let tile_gap_x = 2.0f32;
-        let tile_gap_y = 2.0f32;
-        let layer_offset_x = 4.0f32;
-        let layer_offset_y = 4.0f32;
+        // Tiles keep a 4:3 aspect ratio; stacked layers shift by a fraction of a tile.
+        let layer_off_w = 0.10f32;
+        let layer_off_h = 0.10f32;
 
-        let step_x = tile_base_w + tile_gap_x;
-        let step_y = tile_base_h + tile_gap_y;
+        // A "unit" u is the column pitch; row pitch = u * 0.75.
+        let u_w = avail_w / (n_cols + layer_off_w * max_z);
+        let u_h = avail_h / ((n_rows + layer_off_h * max_z) * 0.75);
+        let u = u_w.min(u_h).clamp(14.0, 96.0);
 
-        let total_grid_w = grid_w * step_x + max_z as f32 * layer_offset_x;
-        let total_grid_h = grid_h * step_y + max_z as f32 * layer_offset_y;
+        let col_pitch = u;
+        let row_pitch = u * 0.75;
+        let gap_x = (u * 0.04).clamp(1.0, 4.0);
+        let gap_y = (row_pitch * 0.04).clamp(1.0, 3.0);
 
-        let scale_x = avail_w / total_grid_w;
-        let scale_y = avail_h / total_grid_h;
-        let scale = scale_x.min(scale_y).min(1.5);
+        let tile_w = col_pitch - gap_x;
+        let tile_h = row_pitch - gap_y;
+        let off_x = col_pitch * layer_off_w;
+        let off_y = row_pitch * layer_off_h;
 
-        let rendered_w = total_grid_w * scale;
-        let rendered_h = total_grid_h * scale;
-        let offset_x = (screen_w - rendered_w) / 2.0;
-        let offset_y = margin + (avail_h - rendered_h) / 2.0;
+        let total_w = n_cols * col_pitch + max_z * off_x;
+        let total_h = n_rows * row_pitch + max_z * off_y;
+        let offset_x = (screen_w - total_w) / 2.0;
+        let offset_y = margin + (avail_h - total_h) / 2.0;
 
         for tile in &active_tiles {
-            let sx = offset_x
-                + (tile.position.x - min_x) as f32 * step_x * scale
-                + tile.position.z as f32 * layer_offset_x * scale;
-            let sy = offset_y
-                + (tile.position.y - min_y) as f32 * step_y * scale
-                + tile.position.z as f32 * layer_offset_y * scale;
-            let tw = tile_base_w * scale;
-            let th = tile_base_h * scale;
+            let col = (tile.position.x - min_x) / 2;
+            let row = (tile.position.y - min_y) / 2;
+            let sx = offset_x + col as f32 * col_pitch + tile.position.z as f32 * off_x;
+            let sy = offset_y + row as f32 * row_pitch + tile.position.z as f32 * off_y;
 
             self.tile_positions.push(TileRenderInfo {
                 tile_id: tile.id,
                 screen_x: sx,
                 screen_y: sy,
-                width: tw,
-                height: th,
+                width: tile_w,
+                height: tile_h,
                 z: tile.position.z,
             });
         }

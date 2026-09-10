@@ -39,33 +39,33 @@ pub fn draw_game_screen(
     screen_w: f32,
     screen_h: f32,
 ) -> UiButtons {
-    clear_background(rgb(30, 30, 40));
+    clear_background(WHITE);
 
     let level_text = format!("Level {}", state.current_level);
-    let level_w = measure_text(&level_text, Some(font), 28u16, 1.0).width;
+    let level_w = measure_text(&level_text, Some(font), 30u16, 1.0).width;
     draw_text_ex(
         &level_text,
         (screen_w - level_w) / 2.0,
-        35.0,
+        32.0,
         TextParams {
             font: Some(font),
-            font_size: 28,
-            color: WHITE,
+            font_size: 30,
+            color: rgb(40, 40, 55),
             ..Default::default()
         },
     );
 
     let remaining = state.active_tile_count();
     let rem_text = format!("Remaining: {}", remaining);
-    let rem_w = measure_text(&rem_text, Some(font), 20u16, 1.0).width;
+    let rem_w = measure_text(&rem_text, Some(font), 18u16, 1.0).width;
     draw_text_ex(
         &rem_text,
         (screen_w - rem_w) / 2.0,
         58.0,
         TextParams {
             font: Some(font),
-            font_size: 20,
-            color: GRAY,
+            font_size: 18,
+            color: rgb(110, 110, 120),
             ..Default::default()
         },
     );
@@ -124,6 +124,7 @@ fn draw_tile(info: &TileRenderInfo, state: &GameState, theme: &Theme, font: &Fon
     let w = info.width;
     let h = info.height;
 
+    // Cast shadow for depth
     let shadow_offset = 3.0f32;
     draw_rectangle(
         x + shadow_offset,
@@ -132,6 +133,12 @@ fn draw_tile(info: &TileRenderInfo, state: &GameState, theme: &Theme, font: &Fon
         h,
         rgb(10, 10, 15),
     );
+
+    // Chunky 3D bevel: darker bottom/right edge
+    let edge = 3.0f32.min(h * 0.22);
+    let dark = rgb(20, 20, 28);
+    draw_rectangle(x + w - edge, y + edge, edge, h - edge, dark);
+    draw_rectangle(x + edge, y + h - edge, w - edge, edge, dark);
 
     let base_color = if is_selected {
         let r = tile_type.map(|t| (t.color.0 as u16 + 60).min(255) as u8).unwrap_or(200);
@@ -142,32 +149,44 @@ fn draw_tile(info: &TileRenderInfo, state: &GameState, theme: &Theme, font: &Fon
         color
     };
 
-    draw_rectangle(x, y, w, h, base_color);
+    // Tile face
+    draw_rectangle(x + edge, y, w - edge, h - edge, base_color);
 
     if is_selected {
         draw_rectangle_lines(x - 1.0, y - 1.0, w + 2.0, h + 2.0, 2.0, YELLOW);
     }
 
-    draw_rectangle(x, y, w, h * 0.3, rgba(255, 255, 255, 40));
-    draw_rectangle_lines(x, y, w, h, 1.0, rgba(0, 0, 0, 80));
+    // Face highlight
+    draw_rectangle(x + edge, y, w - edge, h * 0.18, rgba(255, 255, 255, 45));
+    draw_rectangle_lines(x, y, w, h, 1.0, rgba(0, 0, 0, 90));
 
     if let Some(tt) = tile_type {
         let name = tt.name;
-        let font_size = (h * 0.35).min(16.0).max(8.0) as u16;
-        let text_w = measure_text(name, Some(font), font_size, 1.0).width;
-        let text_x = x + (w - text_w) / 2.0;
-        let text_y = y + (h + font_size as f32) / 2.0 - 2.0;
-        draw_text_ex(
-            name,
-            text_x,
-            text_y,
-            TextParams {
-                font: Some(font),
-                font_size,
-                color: WHITE,
-                ..Default::default()
-            },
-        );
+
+        if h >= 16.0 {
+            let icon_half = (w.min(h) * 0.36).min(26.0).max(4.0);
+            let icon_cx = x + (w - edge) / 2.0;
+            let icon_cy = y + h * 0.38;
+            crate::renderer::icons::draw_tile_icon(name, icon_cx, icon_cy, icon_half);
+        }
+
+        if h >= 10.0 {
+            let font_size = (h * 0.22).min(17.0).max(7.0) as u16;
+            let text_w = measure_text(name, Some(font), font_size, 1.0).width;
+            let text_x = x + (w - text_w) / 2.0;
+            let text_y = y + h * 0.82 + font_size as f32 * 0.4;
+            draw_text_ex(
+                name,
+                text_x,
+                text_y,
+                TextParams {
+                    font: Some(font),
+                    font_size,
+                    color: WHITE,
+                    ..Default::default()
+                },
+            );
+        }
     }
 }
 
