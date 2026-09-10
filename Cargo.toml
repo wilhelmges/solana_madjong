@@ -1,0 +1,16 @@
+[package]
+name = "solong"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+name = "solong"
+path = "src/main.rs"
+
+[dependencies]
+macroquad = "0.4.16"
+
+
+[package.metadata.android]
+build_targets = ["aarch64-linux-android"]
