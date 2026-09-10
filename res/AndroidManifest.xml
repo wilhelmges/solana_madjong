@@ -8,7 +8,7 @@
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
         <activity
-            android:name="org.libsdl.app.SDLActivity"
+            android:name="com.solong.mahjong.MainActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:exported="true">
             <intent-filter>

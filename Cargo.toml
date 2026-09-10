@@ -1,16 +1,25 @@
 [package]
 name = "solong"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+name = "solong"
+crate-type = ["cdylib", "staticlib"]
+path = "src/main.rs"
+
+[[bin]]
 name = "solong"
 path = "src/main.rs"
 
+[[bin]]
+name = "layout_converter"
+path = "src/layout_converter.rs"
+
 [dependencies]
 macroquad = "0.4.16"
-
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [package.metadata.android]
 build_targets = ["aarch64-linux-android"]

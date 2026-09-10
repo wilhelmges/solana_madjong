@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 call setenv.bat
 
@@ -10,7 +10,8 @@ set TARGET_SDK=35
 
 set ANDROID_JAR=%LOCALAPPDATA%\Android\Sdk\platforms\android-35\android.jar
 set AAPT2=%LOCALAPPDATA%\Android\Sdk\build-tools\35.0.0\aapt2.exe
-set D8_JAVA=d8.exe
+set AAPT=%LOCALAPPDATA%\Android\Sdk\build-tools\35.0.0\aapt.exe
+set D8=%LOCALAPPDATA%\Android\Sdk\build-tools\35.0.0\d8.exe
 set ZIPALIGN=%LOCALAPPDATA%\Android\Sdk\build-tools\35.0.0\zipalign.exe
 set APKSIGNER=%LOCALAPPDATA%\Android\Sdk\build-tools\35.0.0\apksigner.bat
 set KEYSTORE=debug.keystore
@@ -24,12 +25,14 @@ cargo ndk -t arm64-v8a build --release
 if errorlevel 1 (echo BUILD FAILED & exit /b 1)
 
 echo [2/6] Compiling Java source...
-if not exist "%OBJ_DIR%" mkdir "%OBJ_DIR%"
-javac --release 8 -classpath "%ANDROID_JAR%" -d "%OBJ_DIR%" res\src\org\sdl\SDLActivity.java
+if exist "%OBJ_DIR%" rmdir /s /q "%OBJ_DIR%"
+mkdir "%OBJ_DIR%"
+javac --release 8 -classpath "%ANDROID_JAR%" -d "%OBJ_DIR%" res\src\com\solong\mahjong\MainActivity.java res\src\quad_native\QuadNative.java
 if errorlevel 1 (echo JAVA COMPILE FAILED & exit /b 1)
 
 echo [3/6] Creating classes.dex...
-%D8_JAVA% --lib "%ANDROID_JAR%" --output "%BUILD_DIR%" "%OBJ_DIR%\com\solong\mahjong\SDLActivity.class"
+dir /s /b "%OBJ_DIR%\*.class" > "%BUILD_DIR%\classes_list.txt"
+%D8% --lib "%ANDROID_JAR%" --output "%BUILD_DIR%" @%BUILD_DIR%\classes_list.txt
 if errorlevel 1 (echo D8 FAILED & exit /b 1)
 
 echo [4/6] Linking APK...
@@ -48,7 +51,7 @@ mkdir "%BUILD_DIR%\apk_contents\lib\arm64-v8a" 2>nul
 copy target\aarch64-linux-android\release\libsolong.so "%BUILD_DIR%\apk_contents\lib\arm64-v8a\" >nul
 copy "%BUILD_DIR%\classes.dex" "%BUILD_DIR%\apk_contents\" >nul
 pushd "%BUILD_DIR%\apk_contents"
-"%LOCALAPPDATA%\Android\Sdk\build-tools\35.0.0\aapt.exe" add "%PROJECT_ROOT%%BUILD_DIR%\%APK_NAME%-unsigned.apk" classes.dex lib/arm64-v8a/libsolong.so
+"%AAPT%" add "%PROJECT_ROOT%%BUILD_DIR%\%APK_NAME%-unsigned.apk" classes.dex lib/arm64-v8a/libsolong.so
 popd
 if errorlevel 1 (echo ADD FILES FAILED & exit /b 1)
 

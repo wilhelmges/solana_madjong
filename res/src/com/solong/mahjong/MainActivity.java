@@ -1,0 +1,266 @@
+package com.solong.mahjong;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.os.Build;
+import android.util.Log;
+
+import android.view.View;
+import android.view.Surface;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowManager.LayoutParams;
+import android.view.SurfaceView;
+import android.view.SurfaceHolder;
+import android.view.MotionEvent;
+import android.view.KeyEvent;
+import android.view.inputmethod.InputMethodManager;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.res.Configuration;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+
+import android.graphics.Color;
+import android.graphics.Insets;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.EditorInfo;
+import android.widget.LinearLayout;
+
+import quad_native.QuadNative;
+
+class QuadSurface
+    extends
+        SurfaceView
+    implements
+        View.OnTouchListener,
+        View.OnKeyListener,
+        SurfaceHolder.Callback {
+
+    public QuadSurface(Context context){
+        super(context);
+        getHolder().addCallback(this);
+
+        setFocusable(true);
+        setFocusableInTouchMode(true);
+        requestFocus();
+        setOnTouchListener(this);
+        setOnKeyListener(this);
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        Log.i("SAPP", "surfaceCreated");
+        Surface surface = holder.getSurface();
+        QuadNative.surfaceOnSurfaceCreated(surface);
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        Log.i("SAPP", "surfaceDestroyed");
+        Surface surface = holder.getSurface();
+        QuadNative.surfaceOnSurfaceDestroyed(surface);
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder,
+                               int format,
+                               int width,
+                               int height) {
+        Log.i("SAPP", "surfaceChanged");
+        Surface surface = holder.getSurface();
+        QuadNative.surfaceOnSurfaceChanged(surface, width, height);
+
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        int pointerCount = event.getPointerCount();
+        int action = event.getActionMasked();
+
+        switch(action) {
+        case MotionEvent.ACTION_MOVE: {
+            for (int i = 0; i < pointerCount; i++) {
+                final int id = event.getPointerId(i);
+                final float x = event.getX(i);
+                final float y = event.getY(i);
+                QuadNative.surfaceOnTouch(id, 0, x, y);
+            }
+            break;
+        }
+        case MotionEvent.ACTION_UP: {
+            final int id = event.getPointerId(0);
+            final float x = event.getX(0);
+            final float y = event.getY(0);
+            QuadNative.surfaceOnTouch(id, 1, x, y);
+            break;
+        }
+        case MotionEvent.ACTION_DOWN: {
+            final int id = event.getPointerId(0);
+            final float x = event.getX(0);
+            final float y = event.getY(0);
+            QuadNative.surfaceOnTouch(id, 2, x, y);
+            break;
+        }
+        case MotionEvent.ACTION_POINTER_UP: {
+            final int pointerIndex = event.getActionIndex();
+            final int id = event.getPointerId(pointerIndex);
+            final float x = event.getX(pointerIndex);
+            final float y = event.getY(pointerIndex);
+            QuadNative.surfaceOnTouch(id, 1, x, y);
+            break;
+        }
+        case MotionEvent.ACTION_POINTER_DOWN: {
+            final int pointerIndex = event.getActionIndex();
+            final int id = event.getPointerId(pointerIndex);
+            final float x = event.getX(pointerIndex);
+            final float y = event.getY(pointerIndex);
+            QuadNative.surfaceOnTouch(id, 2, x, y);
+            break;
+        }
+        case MotionEvent.ACTION_CANCEL: {
+            for (int i = 0; i < pointerCount; i++) {
+                final int id = event.getPointerId(i);
+                final float x = event.getX(i);
+                final float y = event.getY(i);
+                QuadNative.surfaceOnTouch(id, 3, x, y);
+            }
+            break;
+        }
+        default:
+            break;
+        }
+
+        return true;
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public boolean onKey(View v, int keyCode, KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode != 0) {
+            QuadNative.surfaceOnKeyDown(keyCode);
+        }
+
+        if (event.getAction() == KeyEvent.ACTION_UP && keyCode != 0) {
+            QuadNative.surfaceOnKeyUp(keyCode);
+        }
+
+        if (event.getAction() == KeyEvent.ACTION_UP || event.getAction() == KeyEvent.ACTION_MULTIPLE) {
+            int character = event.getUnicodeChar();
+            if (character == 0) {
+                String characters = event.getCharacters();
+                if (characters != null && !characters.isEmpty()) {
+                    character = characters.charAt(0);
+                }
+            }
+
+            if (character != 0) {
+                QuadNative.surfaceOnCharacter(character);
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        InputConnection connection = super.onCreateInputConnection(outAttrs);
+        outAttrs.imeOptions |= EditorInfo.IME_FLAG_NO_FULLSCREEN;
+        return connection;
+    }
+
+    public Surface getNativeSurface() {
+        return getHolder().getSurface();
+    }
+}
+
+class ResizingLayout
+    extends
+        LinearLayout
+    implements
+        View.OnApplyWindowInsetsListener {
+
+    public ResizingLayout(MainActivity activity){
+        super(activity);
+        setBackgroundColor(Color.BLACK);
+        setOnApplyWindowInsetsListener(this);
+    }
+
+    @Override
+    public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            Insets imeInsets = insets.getInsets(WindowInsets.Type.ime());
+            Insets sysInsets = insets.getInsets(WindowInsets.Type.systemBars());
+
+            int bottomPadding = sysInsets.bottom;
+            if (imeInsets.bottom > 0) {
+                bottomPadding = imeInsets.bottom;
+            }
+
+            v.setPadding(
+                sysInsets.left,
+                sysInsets.top,
+                sysInsets.right,
+                bottomPadding
+            );
+        }
+        return insets;
+    }
+}
+
+public class MainActivity extends Activity {
+
+    private QuadSurface view;
+
+    static {
+        System.loadLibrary("solong");
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        view = new QuadSurface(this);
+        ResizingLayout layout = new ResizingLayout(this);
+        layout.addView(view);
+        setContentView(layout);
+
+        QuadNative.activityOnCreate(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        QuadNative.activityOnResume();
+    }
+
+    @Override
+    public void onBackPressed() {
+        Log.w("SAPP", "onBackPressed");
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        QuadNative.activityOnDestroy();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        QuadNative.activityOnPause();
+    }
+}
