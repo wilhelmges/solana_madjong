@@ -263,4 +263,72 @@ public class MainActivity extends Activity {
         super.onPause();
         QuadNative.activityOnPause();
     }
+
+    public void setFullScreen(final boolean fullscreen) {
+        runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    View decorView = getWindow().getDecorView();
+
+                    if (fullscreen) {
+                        getWindow().setFlags(LayoutParams.FLAG_LAYOUT_NO_LIMITS, LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+                        if (Build.VERSION.SDK_INT >= 28) {
+                            getWindow().getAttributes().layoutInDisplayCutoutMode = LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                        }
+                        if (Build.VERSION.SDK_INT >= 30) {
+                            getWindow().setDecorFitsSystemWindows(false);
+                        } else {
+                            int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+                            decorView.setSystemUiVisibility(uiOptions);
+                        }
+                    }
+                    else {
+                        if (Build.VERSION.SDK_INT >= 30) {
+                            getWindow().setDecorFitsSystemWindows(true);
+                        } else {
+                          decorView.setSystemUiVisibility(0);
+                        }
+                    }
+                }
+            });
+    }
+
+    public void showKeyboard(final boolean show) {
+        runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (show) {
+                        InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                        imm.showSoftInput(view, 0);
+                    } else {
+                        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                        imm.hideSoftInputFromWindow(view.getWindowToken(),0);
+                    }
+                }
+            });
+    }
+
+    public String getClipboardText() {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+
+        if (!clipboard.hasPrimaryClip())
+            return null;
+
+        ClipData primaryClip = clipboard.getPrimaryClip();
+        if (primaryClip == null || primaryClip.getItemCount() < 1)
+            return null;
+
+        CharSequence clipData = clipboard.getPrimaryClip().getItemAt(0).getText();
+        if (clipData == null) {
+            return null;
+        }
+
+        return clipData.toString();
+    }
+
+    public void setClipboardText(String text) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("label", text);
+        clipboard.setPrimaryClip(clip);
+    }
 }

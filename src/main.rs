@@ -49,9 +49,12 @@ impl App {
         let mut state = GameState::new();
         state.current_level = current_level;
 
+        let mut renderer = Renderer::new();
+        renderer.load_tile_textures().await;
+
         Self {
             state,
-            renderer: Renderer::new(),
+            renderer,
             theme,
             font,
             screen: Screen::Start,

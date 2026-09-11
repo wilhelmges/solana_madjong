@@ -5,6 +5,7 @@
     <application
         android:hasCode="true"
         android:label="Mahjong"
+        android:extractNativeLibs="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
         <activity

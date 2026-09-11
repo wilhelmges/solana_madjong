@@ -1,6 +1,7 @@
 use macroquad::prelude::*;
 
 use crate::game_core::GameState;
+use crate::renderer::tiles::TileTextures;
 use crate::renderer::{Renderer, TileRenderInfo};
 use crate::theme::Theme;
 
@@ -71,7 +72,7 @@ pub fn draw_game_screen(
     );
 
     for info in &renderer.tile_positions {
-        draw_tile(info, state, theme, font);
+        draw_tile(info, state, theme, font, &renderer.tile_textures);
     }
 
     let btn_h = 35.0f32;
@@ -106,7 +107,13 @@ pub fn draw_game_screen(
     }
 }
 
-fn draw_tile(info: &TileRenderInfo, state: &GameState, theme: &Theme, font: &Font) {
+fn draw_tile(
+    info: &TileRenderInfo,
+    state: &GameState,
+    theme: &Theme,
+    font: &Font,
+    textures: &TileTextures,
+) {
     let tile = match state.get_tile(info.tile_id) {
         Some(t) => t,
         None => return,
@@ -149,8 +156,28 @@ fn draw_tile(info: &TileRenderInfo, state: &GameState, theme: &Theme, font: &Fon
         color
     };
 
-    // Tile face
-    draw_rectangle(x + edge, y, w - edge, h - edge, base_color);
+    // Tile face (texture art when available, otherwise the flat color)
+    let face_x = x + edge;
+    let face_w = w - edge;
+    let face_h = h - edge;
+    if let Some(tt) = tile_type {
+        if let Some(tex) = textures.get(tt.name) {
+            draw_texture_ex(
+                tex,
+                face_x,
+                y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(face_w, face_h)),
+                    ..Default::default()
+                },
+            );
+        } else {
+            draw_rectangle(face_x, y, face_w, face_h, base_color);
+        }
+    } else {
+        draw_rectangle(face_x, y, face_w, face_h, base_color);
+    }
 
     if is_selected {
         draw_rectangle_lines(x - 1.0, y - 1.0, w + 2.0, h + 2.0, 2.0, YELLOW);
@@ -162,15 +189,16 @@ fn draw_tile(info: &TileRenderInfo, state: &GameState, theme: &Theme, font: &Fon
 
     if let Some(tt) = tile_type {
         let name = tt.name;
+        let has_texture = textures.get(name).is_some();
 
-        if h >= 16.0 {
+        if !has_texture && h >= 16.0 {
             let icon_half = (w.min(h) * 0.36).min(26.0).max(4.0);
             let icon_cx = x + (w - edge) / 2.0;
             let icon_cy = y + h * 0.38;
             crate::renderer::icons::draw_tile_icon(name, icon_cx, icon_cy, icon_half);
         }
 
-        if h >= 10.0 {
+        if !has_texture && h >= 10.0 {
             let font_size = (h * 0.22).min(17.0).max(7.0) as u16;
             let text_w = measure_text(name, Some(font), font_size, 1.0).width;
             let text_x = x + (w - text_w) / 2.0;

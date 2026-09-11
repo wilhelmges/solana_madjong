@@ -1,10 +1,12 @@
 pub mod draw;
 pub mod icons;
+pub mod tiles;
 
 use crate::game_core::GameState;
 
 pub struct Renderer {
     pub tile_positions: Vec<TileRenderInfo>,
+    pub tile_textures: tiles::TileTextures,
 }
 
 #[derive(Clone)]
@@ -19,9 +21,18 @@ pub struct TileRenderInfo {
 
 impl Renderer {
     pub fn new() -> Self {
+        Self::new_empty()
+    }
+
+    pub fn new_empty() -> Self {
         Self {
             tile_positions: Vec::new(),
+            tile_textures: tiles::TileTextures::new_empty(),
         }
+    }
+
+    pub async fn load_tile_textures(&mut self) {
+        self.tile_textures = tiles::TileTextures::load().await;
     }
 
     pub fn compute_layout(
