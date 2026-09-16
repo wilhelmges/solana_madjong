@@ -16,8 +16,6 @@ fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
 // Reference palette: deep navy background, cream tiles with thick sides.
 const BG: (u8, u8, u8) = (13, 13, 43);
 const FACE: (u8, u8, u8) = (253, 244, 223);
-const SIDE_MID: (u8, u8, u8) = (214, 203, 175);
-const SIDE_DARK: (u8, u8, u8) = (165, 153, 125);
 const INK: (u8, u8, u8) = (48, 42, 35);
 const GOLD: (u8, u8, u8) = (255, 205, 70);
 
@@ -254,7 +252,6 @@ fn draw_tile(
     let y = info.screen_y;
     let w = info.width;
     let h = info.height;
-    let t = info.thickness;
     if w < 6.0 || h < 6.0 {
         return;
     }
@@ -288,18 +285,8 @@ fn draw_tile(
         );
     }
 
-    // Soft drop shadow.
-    draw_rounded_rect(sx + 3.0, sy + 5.0, w, h, r, rgba(0, 0, 0, 95));
-    // Procedural thickness: two stepped offset layers = right/bottom sides.
-    draw_rounded_rect(sx + t, sy + t, w, h, r, rgb(SIDE_DARK.0, SIDE_DARK.1, SIDE_DARK.2));
-    draw_rounded_rect(
-        sx + t * 0.5,
-        sy + t * 0.5,
-        w,
-        h,
-        r,
-        rgb(SIDE_MID.0, SIDE_MID.1, SIDE_MID.2),
-    );
+    // Soft drop shadow — the only depth hint.
+    draw_rounded_rect(sx + 2.0, sy + 3.0, w, h, r, rgba(0, 0, 0, 80));
     // Face.
     draw_rounded_rect(sx, sy, w, h, r, rgb(FACE.0, FACE.1, FACE.2));
     // Top gloss.
@@ -312,62 +299,31 @@ fn draw_tile(
         rgba(255, 255, 255, 70),
     );
 
-    // Logo: current PNGs are full-bleed placeholders, so draw them inset on the
-    // cream face. Once logo-with-alpha assets arrive this becomes a clean icon.
+    // Logo: maximised to fill most of the cream face.
     let tile_type = theme.tile_types.iter().find(|tt| tt.id == tile.type_id);
     let name = tile_type.map(|tt| tt.name).unwrap_or("?");
-    let logo_box_h = h * 0.60;
-    let logo_s = (w * 0.68).min(logo_box_h).clamp(8.0, 200.0);
-    let logo_x = sx + (w - logo_s) / 2.0;
-    let logo_y = sy + h * 0.08 + (logo_box_h - logo_s) / 2.0;
     if let Some(tex) = textures.get(name) {
-        // Inset the art with a small cream margin so old full-bleed
-        // placeholders don't cover the whole face.
-        let inset = (w * 0.10).min(8.0);
-        let dw = (logo_s - inset).max(6.0);
-        let dx = logo_x + inset / 2.0;
-        let dy = logo_y;
+        let logo_s = (w * 0.88).min(h * 0.85).max(8.0);
+        let dx = sx + (w - logo_s) / 2.0;
+        let dy = sy + (h - logo_s) / 2.0;
         draw_texture_ex(
             tex,
             dx,
             dy,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(dw, dw.min(logo_box_h))),
+                dest_size: Some(vec2(logo_s, logo_s)),
                 ..Default::default()
             },
         );
     } else {
-        // Fallback: dark badge + procedural white icon so it reads on cream.
+        // Fallback: dark badge + procedural icon.
         let cx = sx + w / 2.0;
-        let cy = sy + h * 0.36;
-        let s = w.min(h) * 0.26;
+        let cy = sy + h * 0.40;
+        let s = w.min(h) * 0.35;
         draw_circle(cx, cy, s * 1.25, rgb(45, 42, 60));
         crate::renderer::icons::draw_tile_icon(name, cx, cy, s * 0.9);
     }
-
-    // Caption: dark ink on cream, like the reference.
-    let label = name.to_uppercase();
-    let font_size = (h * 0.16).clamp(8.0, 15.0) as u16;
-    let text_w = measure_text(&label, Some(font), font_size, 1.0).width;
-    // Shrink long names (e.g. FIREDANCER) to fit.
-    let mut fs = font_size;
-    let mut tw = text_w;
-    while tw > w - 8.0 && fs > 7 {
-        fs -= 1;
-        tw = measure_text(&label, Some(font), fs, 1.0).width;
-    }
-    draw_text_ex(
-        &label,
-        sx + (w - tw) / 2.0,
-        sy + h * 0.80 + fs as f32 * 0.35,
-        TextParams {
-            font: Some(font),
-            font_size: fs,
-            color: rgb(INK.0, INK.1, INK.2),
-            ..Default::default()
-        },
-    );
 
     // Blocked tiles are dimmed so free pairs read instantly.
     if !selectable {

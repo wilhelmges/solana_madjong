@@ -70,31 +70,29 @@ impl Renderer {
         let n_rows = ((max_y - min_y) / 2 + 1).max(1) as f32;
         let max_z = max_z as f32;
 
-        let margin = 16.0f32;
-        let top_bar = 76.0f32;
-        let bottom_bar = 78.0f32;
+        let margin = 8.0f32;
+        let top_bar = 62.0f32;
+        let bottom_bar = 62.0f32;
         let avail_w = (screen_w - margin * 2.0).max(100.0);
         let avail_h = (screen_h - top_bar - bottom_bar).max(100.0);
 
-        // Tiles keep a ~1:1.25 portrait-ish face like the reference; stacked
-        // layers shift by roughly one thickness to reveal the 3D sides.
-        // A "unit" u is the column pitch; row pitch is slightly shorter so the
-        // pyramid looks dense.
-        let u_w = avail_w / (n_cols + 0.35 * max_z);
-        let u_h = avail_h / ((n_rows + 0.35 * max_z) * 0.86);
-        let u = u_w.min(u_h).clamp(14.0, 96.0);
+        // A "unit" u is the column pitch; row pitch is slightly shorter.
+        let u_w = avail_w / (n_cols + 0.15 * max_z);
+        let u_h = avail_h / ((n_rows + 0.15 * max_z) * 0.88);
+        let u = u_w.min(u_h).clamp(14.0, 140.0);
 
         let col_pitch = u;
-        let row_pitch = u * 0.86;
-        let gap_x = (u * 0.05).clamp(1.0, 5.0);
-        let gap_y = (row_pitch * 0.05).clamp(1.0, 4.0);
+        let row_pitch = u * 0.88;
+        let gap_x = (u * 0.03).clamp(0.5, 3.0);
+        let gap_y = (row_pitch * 0.03).clamp(0.5, 2.5);
 
         let tile_w = col_pitch - gap_x;
         let tile_h = row_pitch - gap_y;
-        // Procedural 3D depth, drawn by code (see draw::draw_tile).
-        let thickness = (u * 0.14).clamp(5.0, 11.0);
-        let off_x = thickness * 0.85;
-        let off_y = thickness * 0.85;
+        // Flat tiles with a soft drop shadow; only a slight layer offset so
+        // stacked tiles still read as a pyramid.
+        let thickness = (u * 0.06).clamp(4.0, 8.0);
+        let off_x = thickness * 0.5;
+        let off_y = thickness * 0.5;
 
         let total_w = n_cols * col_pitch + max_z * off_x + thickness;
         let total_h = n_rows * row_pitch + max_z * off_y + thickness;
