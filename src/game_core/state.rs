@@ -41,6 +41,12 @@ pub struct GameState {
     pub tiles: Vec<Tile>,
     pub selected_tile_id: Option<usize>,
     pub phase: GamePhase,
+    pub score: u32,
+    pub hints_left: u32,
+    pub shuffles_left: u32,
+    pub history: Vec<(usize, usize, u32, u32)>,
+    pub hint_pair: Option<(usize, usize)>,
+    pub level_start_sec: f64,
 }
 
 impl GameState {
@@ -50,6 +56,12 @@ impl GameState {
             tiles: Vec::new(),
             selected_tile_id: None,
             phase: GamePhase::Playing,
+            score: 0,
+            hints_left: 3,
+            shuffles_left: 3,
+            history: Vec::new(),
+            hint_pair: None,
+            level_start_sec: 0.0,
         }
     }
 
@@ -72,6 +84,12 @@ impl GameState {
             .collect();
         self.selected_tile_id = None;
         self.phase = GamePhase::Playing;
+        self.score = 0;
+        self.hints_left = 3;
+        self.shuffles_left = 3;
+        self.history.clear();
+        self.hint_pair = None;
+        self.level_start_sec = super::game_time_now();
     }
 
     pub fn active_tile_count(&self) -> usize {

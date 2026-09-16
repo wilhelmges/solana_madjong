@@ -7,4 +7,7 @@ pub enum Action {
     ResetProgress,
     Exit,
     StartAgain,
+    Hint,
+    Shuffle,
+    Undo,
 }

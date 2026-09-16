@@ -98,6 +98,15 @@ impl App {
                 self.start_game();
             }
             Action::Exit => std::process::exit(0),
+            Action::Hint => {
+                game_core::apply_hint(&mut self.state);
+            }
+            Action::Shuffle => {
+                game_core::do_shuffle(&mut self.state);
+            }
+            Action::Undo => {
+                game_core::do_undo(&mut self.state);
+            }
             Action::SelectTile(tile_id) => {
                 if let Some((_a, _b)) = game_core::try_select_tile(&mut self.state, tile_id) {
                 }
@@ -139,6 +148,8 @@ async fn main() {
             }
             Screen::Game => {
                 app.renderer.compute_layout(&app.state, screen_w, screen_h);
+                let elapsed = (macroquad::time::get_time() - app.state.level_start_sec)
+                    .max(0.0) as u64;
                 let ui = renderer::draw::draw_game_screen(
                     &app.renderer,
                     &app.state,
@@ -146,22 +157,22 @@ async fn main() {
                     &app.font,
                     screen_w,
                     screen_h,
+                    elapsed,
                 );
-
-                if ui.restart.contains(mouse_position().0, mouse_position().1)
-                    && is_mouse_button_pressed(MouseButton::Left)
-                {
-                    app.handle_action(Action::RestartLevel);
-                }
-                if ui.exit.contains(mouse_position().0, mouse_position().1)
-                    && is_mouse_button_pressed(MouseButton::Left)
-                {
-                    app.handle_action(Action::Exit);
-                }
 
                 if is_mouse_button_pressed(MouseButton::Left) {
                     let (mx, my) = mouse_position();
-                    if let Some(tile_id) = app.renderer.get_tile_at(mx, my) {
+                    if ui.hint.contains(mx, my) {
+                        app.handle_action(Action::Hint);
+                    } else if ui.shuffle.contains(mx, my) {
+                        app.handle_action(Action::Shuffle);
+                    } else if ui.undo.contains(mx, my) {
+                        app.handle_action(Action::Undo);
+                    } else if ui.restart.contains(mx, my) {
+                        app.handle_action(Action::RestartLevel);
+                    } else if ui.exit.contains(mx, my) {
+                        app.handle_action(Action::Exit);
+                    } else if let Some(tile_id) = app.renderer.get_tile_at(mx, my) {
                         app.handle_action(Action::SelectTile(tile_id));
                     }
                 }

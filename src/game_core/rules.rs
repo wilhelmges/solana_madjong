@@ -103,6 +103,9 @@ pub fn try_select_tile(state: &mut GameState, tile_id: usize) -> Option<(usize, 
                 state.tiles[prev_id].active = false;
                 state.tiles[tile_id].active = false;
                 state.selected_tile_id = None;
+                state.history.push((prev_id, tile_id, prev_tile.type_id, tile.type_id));
+                state.score = state.score.saturating_add(100);
+                state.hint_pair = None;
 
                 if state.active_tile_count() == 0 {
                     state.phase = super::state::GamePhase::LevelCompleted;
@@ -118,6 +121,10 @@ pub fn try_select_tile(state: &mut GameState, tile_id: usize) -> Option<(usize, 
 }
 
 pub fn has_any_moves(state: &GameState) -> bool {
+    find_hint_pair(state).is_some()
+}
+
+pub fn find_hint_pair(state: &GameState) -> Option<(usize, usize)> {
     let active: Vec<&Tile> = state.tiles.iter().filter(|t| t.active).collect();
     for i in 0..active.len() {
         if !is_selectable(state, active[i]) {
@@ -128,11 +135,97 @@ pub fn has_any_moves(state: &GameState) -> bool {
                 continue;
             }
             if tiles_match(active[i], active[j]) {
-                return true;
+                return Some((active[i].id, active[j].id));
             }
         }
     }
-    false
+    None
+}
+
+pub fn apply_hint(state: &mut GameState) -> Option<(usize, usize)> {
+    if state.hints_left == 0 {
+        return None;
+    }
+    let pair = find_hint_pair(state)?;
+    state.hint_pair = Some(pair);
+    state.selected_tile_id = None;
+    state.hints_left -= 1;
+    Some(pair)
+}
+
+pub fn do_undo(state: &mut GameState) -> bool {
+    let (a, b, _ta, _tb) = match state.history.pop() {
+        Some(v) => v,
+        None => return false,
+    };
+    if let Some(t) = state.tiles.get_mut(a) {
+        t.active = true;
+    }
+    if let Some(t) = state.tiles.get_mut(b) {
+        t.active = true;
+    }
+    state.selected_tile_id = None;
+    state.hint_pair = None;
+    state.score = state.score.saturating_sub(100);
+    if state.phase == super::state::GamePhase::LevelCompleted {
+        state.phase = super::state::GamePhase::Playing;
+    }
+    true
+}
+
+fn next_rand(seed: &mut u64) -> u64 {
+    // xorshift64*, no external deps, deterministic in tests.
+    let mut x = *seed | 1;
+    x ^= x >> 12;
+    x ^= x << 25;
+    x ^= x >> 27;
+    *seed = x;
+    x.wrapping_mul(0x2545F4914F6CDD1D)
+}
+
+pub fn do_shuffle(state: &mut GameState) -> bool {
+    if state.shuffles_left == 0 {
+        return false;
+    }
+    let mut idx: Vec<usize> = state
+        .tiles
+        .iter()
+        .filter(|t| t.active)
+        .map(|t| t.id)
+        .collect();
+    if idx.len() < 4 {
+        return false;
+    }
+    let mut types: Vec<u32> = idx.iter().map(|&i| state.tiles[i].type_id).collect();
+    let mut seed = (types.len() as u64)
+        .wrapping_mul(0x9E3779B97F4A7C15)
+        .wrapping_add(state.history.len() as u64 + 0x12345)
+        .wrapping_add((super::game_time_now() * 1000.0) as u64);
+    for i in (1..types.len()).rev() {
+        let j = (next_rand(&mut seed) as usize) % (i + 1);
+        types.swap(i, j);
+    }
+    for (k, &ti) in idx.iter().enumerate() {
+        state.tiles[ti].type_id = types[k];
+    }
+    // Keep at least one move when possible: reshuffle up to a few times.
+    for _ in 0..8 {
+        if find_hint_pair(state).is_some() {
+            break;
+        }
+        for i in (1..types.len()).rev() {
+            let j = (next_rand(&mut seed) as usize) % (i + 1);
+            types.swap(i, j);
+        }
+        for (k, &ti) in idx.iter().enumerate() {
+            state.tiles[ti].type_id = types[k];
+        }
+    }
+    idx.clear();
+    state.selected_tile_id = None;
+    state.hint_pair = None;
+    state.shuffles_left -= 1;
+    true
 }
 
 #[cfg(test)]
