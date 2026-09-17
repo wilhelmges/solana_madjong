@@ -7,6 +7,17 @@ use crate::game_core::GameState;
 pub struct Renderer {
     pub tile_positions: Vec<TileRenderInfo>,
     pub tile_textures: tiles::TileTextures,
+    pub fades: Vec<TileFade>,
+}
+
+#[derive(Clone)]
+pub struct TileFade {
+    pub tile_id: usize,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    pub start_sec: f64,
 }
 
 #[derive(Clone)]
@@ -31,6 +42,28 @@ impl Renderer {
         Self {
             tile_positions: Vec::new(),
             tile_textures: tiles::TileTextures::new_empty(),
+            fades: Vec::new(),
+        }
+    }
+
+    pub fn clear_fades(&mut self) {
+        self.fades.clear();
+    }
+
+    pub fn start_fade_of_tile(&mut self, tile_id: usize) {
+        if let Some(p) = self
+            .tile_positions
+            .iter()
+            .find(|p| p.tile_id == tile_id)
+        {
+            self.fades.push(TileFade {
+                tile_id,
+                x: p.screen_x,
+                y: p.screen_y,
+                w: p.width,
+                h: p.height,
+                start_sec: crate::game_core::game_time_now(),
+            });
         }
     }
 

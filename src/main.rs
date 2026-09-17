@@ -26,6 +26,7 @@ enum Screen {
     Game,
     Transition { completed_level: usize },
     Completion,
+    GameOver,
 }
 
 struct App {
@@ -67,6 +68,7 @@ impl App {
     }
 
     fn load_current_level(&mut self) {
+        self.renderer.clear_fades();
         if let Some(level_data) = levels::load_level(self.state.current_level) {
             self.state.load_level(self.state.current_level, &level_data);
         }
@@ -98,26 +100,35 @@ impl App {
                 self.start_game();
             }
             Action::Exit => std::process::exit(0),
-            Action::Hint => {
-                game_core::apply_hint(&mut self.state);
-            }
-            Action::Shuffle => {
-                game_core::do_shuffle(&mut self.state);
-            }
             Action::Undo => {
+                self.renderer.clear_fades();
                 game_core::do_undo(&mut self.state);
+                // Leaving GameOver via undo returns to the board.
+                if let Screen::GameOver = self.screen {
+                    self.screen = Screen::Game;
+                }
             }
             Action::SelectTile(tile_id) => {
-                if let Some((_a, _b)) = game_core::try_select_tile(&mut self.state, tile_id) {
+                let was_paired = game_core::buffer_click(&mut self.state, tile_id);
+                // A tile still in the buffer after the click means it was moved
+                // off the field; a shared tile_id means the pair was cleared.
+                if was_paired || self.state.buffer.contains(&tile_id) {
+                    self.renderer.start_fade_of_tile(tile_id);
                 }
-                if self.state.phase == GamePhase::LevelCompleted {
-                    if self.state.current_level >= levels::total_levels() {
-                        self.screen = Screen::Completion;
-                    } else {
-                        self.screen = Screen::Transition {
-                            completed_level: self.state.current_level,
-                        };
+                match self.state.phase {
+                    GamePhase::LevelCompleted => {
+                        if self.state.current_level >= levels::total_levels() {
+                            self.screen = Screen::Completion;
+                        } else {
+                            self.screen = Screen::Transition {
+                                completed_level: self.state.current_level,
+                            };
+                        }
                     }
+                    GamePhase::Lost => {
+                        self.screen = Screen::GameOver;
+                    }
+                    _ => {}
                 }
             }
         }
@@ -151,7 +162,7 @@ async fn main() {
                 let elapsed = (macroquad::time::get_time() - app.state.level_start_sec)
                     .max(0.0) as u64;
                 let ui = renderer::draw::draw_game_screen(
-                    &app.renderer,
+                    &mut app.renderer,
                     &app.state,
                     &app.theme,
                     &app.font,
@@ -162,11 +173,7 @@ async fn main() {
 
                 if is_mouse_button_pressed(MouseButton::Left) {
                     let (mx, my) = mouse_position();
-                    if ui.hint.contains(mx, my) {
-                        app.handle_action(Action::Hint);
-                    } else if ui.shuffle.contains(mx, my) {
-                        app.handle_action(Action::Shuffle);
-                    } else if ui.undo.contains(mx, my) {
+                    if ui.undo.contains(mx, my) {
                         app.handle_action(Action::Undo);
                     } else if ui.restart.contains(mx, my) {
                         app.handle_action(Action::RestartLevel);
@@ -196,6 +203,24 @@ async fn main() {
                     && is_mouse_button_pressed(MouseButton::Left)
                 {
                     app.handle_action(Action::StartAgain);
+                }
+                if ui.exit.contains(mouse_position().0, mouse_position().1)
+                    && is_mouse_button_pressed(MouseButton::Left)
+                {
+                    app.handle_action(Action::Exit);
+                }
+            }
+            Screen::GameOver => {
+                let ui = renderer::draw::draw_game_over_screen(&app.font, screen_w, screen_h);
+                if ui.restart.contains(mouse_position().0, mouse_position().1)
+                    && is_mouse_button_pressed(MouseButton::Left)
+                {
+                    app.handle_action(Action::RestartLevel);
+                }
+                if ui.undo.contains(mouse_position().0, mouse_position().1)
+                    && is_mouse_button_pressed(MouseButton::Left)
+                {
+                    app.handle_action(Action::Undo);
                 }
                 if ui.exit.contains(mouse_position().0, mouse_position().1)
                     && is_mouse_button_pressed(MouseButton::Left)

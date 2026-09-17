@@ -34,18 +34,24 @@ pub enum GamePhase {
     Playing,
     LevelCompleted,
     AllLevelsCompleted,
+    Lost,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BufferAction {
+    AddedToBuffer(usize),
+    Paired(usize, usize, usize),
+}
+
+pub const BUFFER_SIZE: usize = 4;
 
 pub struct GameState {
     pub current_level: usize,
     pub tiles: Vec<Tile>,
-    pub selected_tile_id: Option<usize>,
+    pub buffer: Vec<usize>,
     pub phase: GamePhase,
     pub score: u32,
-    pub hints_left: u32,
-    pub shuffles_left: u32,
-    pub history: Vec<(usize, usize, u32, u32)>,
-    pub hint_pair: Option<(usize, usize)>,
+    pub history: Vec<BufferAction>,
     pub level_start_sec: f64,
 }
 
@@ -54,13 +60,10 @@ impl GameState {
         Self {
             current_level: 1,
             tiles: Vec::new(),
-            selected_tile_id: None,
+            buffer: Vec::new(),
             phase: GamePhase::Playing,
             score: 0,
-            hints_left: 3,
-            shuffles_left: 3,
             history: Vec::new(),
-            hint_pair: None,
             level_start_sec: 0.0,
         }
     }
@@ -82,13 +85,10 @@ impl GameState {
                 active: true,
             })
             .collect();
-        self.selected_tile_id = None;
+        self.buffer.clear();
         self.phase = GamePhase::Playing;
         self.score = 0;
-        self.hints_left = 3;
-        self.shuffles_left = 3;
         self.history.clear();
-        self.hint_pair = None;
         self.level_start_sec = super::game_time_now();
     }
 
