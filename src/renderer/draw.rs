@@ -361,7 +361,7 @@ fn draw_buffer(
         .iter()
         .fold(0.0f32, |m, p| m.max(p.screen_y + p.height + p.thickness * 0.5));
     let hud_top = screen_h - 46.0 - 36.0 - 8.0;
-    let mut y0 = tile_bottom + 14.0;
+    let mut y0 = tile_bottom + 28.0;
     if y0 + slot_h > hud_top {
         y0 = (hud_top - slot_h).max(0.0);
     }
@@ -384,15 +384,22 @@ fn draw_buffer(
     for i in 0..n {
         let sx = x0 + i as f32 * (slot_w + gap);
         let sy = y0;
-        // slot backdrop
-        draw_rounded_rect(sx, sy, slot_w, slot_h, 6.0, rgba(255, 255, 255, 7));
         if let Some(&tid) = state.buffer.get(i) {
             // filled: mini tile + accent border
             draw_buffer_tile(tid, state, theme, &renderer.tile_textures, sx, sy, slot_w, slot_h);
         } else {
-            // empty: faint border + dim shadow
-            draw_rounded_rect(sx + 1.5, sy + 2.0, slot_w, slot_h, 6.0, rgba(0, 0, 0, 40));
-            draw_rectangle_lines(sx + 0.5, sy + 0.5, slot_w - 1.0, slot_h - 1.0, 1.0, rgba(255, 255, 255, 35));
+            // empty: gray slot so the buffer zone is immediately recognisable
+            draw_rounded_rect(sx + 1.5, sy + 2.0, slot_w, slot_h, 6.0, rgba(0, 0, 0, 45));
+            draw_rounded_rect(sx, sy, slot_w, slot_h, 6.0, rgba(130, 130, 145, 95));
+            draw_rounded_rect(
+                sx + 3.0,
+                sy + 2.0,
+                slot_w - 6.0,
+                (slot_h * 0.14).min(8.0),
+                3.0,
+                rgba(255, 255, 255, 26),
+            );
+            draw_rectangle_lines(sx + 0.5, sy + 0.5, slot_w - 1.0, slot_h - 1.0, 1.2, rgba(255, 255, 255, 50));
         }
     }
 }
