@@ -454,10 +454,14 @@ fn draw_button_widget(font: &Font, text: &str, rect: &ButtonRect, bg: Color, hov
     let hovered = rect.contains(mouse.0, mouse.1);
 
     draw_rectangle(rect.x, rect.y, rect.w, rect.h, if hovered { hover_bg } else { bg });
-    draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2.0, WHITE);
+    draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2.5, WHITE);
 
-    let font_size = 22u16;
-    let text_w = measure_text(text, Some(font), font_size, 1.0).width;
+    let mut font_size = ((rect.h * 0.42).round() as u16).clamp(18, 40);
+    let mut text_w = measure_text(text, Some(font), font_size, 1.0).width;
+    while text_w > rect.w - 16.0 && font_size > 16 {
+        font_size -= 1;
+        text_w = measure_text(text, Some(font), font_size, 1.0).width;
+    }
     draw_text_ex(
         text,
         rect.x + (rect.w - text_w) / 2.0,
@@ -469,6 +473,24 @@ fn draw_button_widget(font: &Font, text: &str, rect: &ButtonRect, bg: Color, hov
             ..Default::default()
         },
     );
+}
+
+// Touch-friendly button sizes for phone use: big enough to tap easily, and
+// always fits within the screen width even in portrait.
+fn touch_btn_w(screen_w: f32, two_side_by_side: bool) -> f32 {
+    if two_side_by_side {
+        ((screen_w - 48.0) / 2.0).clamp(150.0, 300.0)
+    } else {
+        (screen_w * 0.66).clamp(280.0, 380.0)
+    }
+}
+
+fn touch_btn_h(screen_h: f32) -> f32 {
+    (screen_h * 0.12).clamp(68.0, 92.0)
+}
+
+fn touch_btn_gap(screen_h: f32) -> f32 {
+    (screen_h * 0.04).clamp(18.0, 34.0)
 }
 
 pub struct StartScreenButtons {
@@ -494,9 +516,9 @@ pub fn draw_start_screen(font: &Font, screen_w: f32, screen_h: f32) -> StartScre
         },
     );
 
-    let btn_w = 200.0;
-    let btn_h = 55.0;
-    let btn_gap = 15.0;
+    let btn_w = touch_btn_w(screen_w, false);
+    let btn_h = touch_btn_h(screen_h);
+    let btn_gap = touch_btn_gap(screen_h);
     let btn_x = (screen_w - btn_w) / 2.0;
     let start_y = screen_h * 0.5;
 
@@ -555,8 +577,8 @@ pub fn draw_transition_screen(
         },
     );
 
-    let btn_w = 220.0;
-    let btn_h = 55.0;
+    let btn_w = touch_btn_w(screen_w, false);
+    let btn_h = touch_btn_h(screen_h);
     let btn_x = (screen_w - btn_w) / 2.0;
     let btn_y = screen_h * 0.55;
     let rect = ButtonRect {
@@ -616,9 +638,9 @@ pub fn draw_completion_screen(font: &Font, screen_w: f32, screen_h: f32) -> Comp
         },
     );
 
-    let btn_w = 200.0;
-    let btn_h = 50.0;
-    let btn_gap = 20.0;
+    let btn_w = touch_btn_w(screen_w, true);
+    let btn_h = touch_btn_h(screen_h);
+    let btn_gap = touch_btn_gap(screen_h);
     let total = btn_w * 2.0 + btn_gap;
     let start_x = (screen_w - total) / 2.0;
     let btn_y = screen_h * 0.55;
@@ -687,9 +709,9 @@ pub fn draw_game_over_screen(font: &Font, screen_w: f32, screen_h: f32) -> GameO
         },
     );
 
-    let btn_w = 190.0;
-    let btn_h = 50.0;
-    let btn_gap = 16.0;
+    let btn_w = touch_btn_w(screen_w, true);
+    let btn_h = touch_btn_h(screen_h);
+    let btn_gap = touch_btn_gap(screen_h);
     let total = btn_w * 2.0 + btn_gap;
     let start_x = (screen_w - total) / 2.0;
     let btn_y = screen_h * 0.56;
